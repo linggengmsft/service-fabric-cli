@@ -93,6 +93,16 @@ def aad_bearer():
     """AAD bearer header."""
     return get_config_value('bearer', fallback=None)
 
+def aad_metadata():
+    """AAD metadata."""
+    return get_config_value('authority_uri', fallback=None),get_config_value('aad_resource', fallback=None),get_config_value('aad_client', fallback=None)
+
+def set_aad_metadata(uri, resource, client):
+    """Set AAD metadata."""
+    set_config_value('authority_uri', uri)
+    set_config_value('aad_resource', resource)
+    set_config_value('aad_client', client)
+
 def set_auth(pem=None, cert=None, key=None, access_token=None):
     """Set certificate usage paths"""
 

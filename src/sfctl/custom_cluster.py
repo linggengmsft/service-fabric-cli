@@ -66,12 +66,13 @@ def select(endpoint, cert=None, key=None, pem=None, ca=None,
 
     select_arg_verify(endpoint, cert, key, pem, ca, aad, no_verify)
 
-    access_token = None
+    token = None
     if aad:
 
-        access_token = sf_get_aad_token(endpoint, no_verify)
+        token, new_cache = get_aad_token(endpoint, no_verify)
+        #print(new_cache)
         rest_client = ServiceClient(
-            AdalAuthentication(access_token, no_verify),
+            AdalAuthentication(token, new_cache, no_verify),
             Configuration(endpoint)
         )
 
@@ -95,15 +96,15 @@ def select(endpoint, cert=None, key=None, pem=None, ca=None,
     set_cluster_endpoint(endpoint)
     set_no_verify(no_verify)
     set_ca_cert(ca)
-    set_auth(pem, cert, key, access_token)
+    set_auth(pem, cert, key, token['accessToken'])
 
-def sf_get_aad_token(endpoint, no_verify):
+def get_aad_token(endpoint, no_verify):
     """Get AAD token"""
     from azure.servicefabric.service_fabric_client_ap_is import (
         ServiceFabricClientAPIs
     )
     from sfctl.auth import ClientCertAuthentication
-    from sfctl.config import (aad_bearer, client_endpoint,
+    from sfctl.config import (aad_bearer, client_endpoint, set_aad_metadata,
                               set_config_value, no_verify_setting)
     from datetime import datetime
     from datetime import timedelta
@@ -119,10 +120,13 @@ def sf_get_aad_token(endpoint, no_verify):
     aad_resource = aad_metadata.metadata
 
     tenant_id = aad_resource.tenant
-    context = adal.AuthenticationContext(aad_resource.login + '/' + tenant_id,
+    authority_uri = aad_resource.login + '/' + tenant_id
+    context = adal.AuthenticationContext(authority_uri,
                                          api_version=None)
     cluster_id = aad_resource.cluster
     client_id = aad_resource.client
+
+    set_aad_metadata(authority_uri, cluster_id, client_id)
 
     code = context.acquire_user_code(cluster_id, client_id)
     print(code['message'])
@@ -130,4 +134,4 @@ def sf_get_aad_token(endpoint, no_verify):
         cluster_id, code, client_id)
     print("Succeed! Token expires at: " +
           (str)(datetime.now() + timedelta(0, token['expiresIn'])))
-    return token['accessToken']
+    return token, adal.TokenCache()
